@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bored - Activity Finder</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input[type="text"], input[type="number"], button { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .toggle-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; cursor: pointer; }
+        .toggle-group input { width: auto; cursor: pointer; }
+        button { background: #28a745; color: white; border: none; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #218838; }
+        #display-area { margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee; }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Activity Finder</h2>
+    
+    <div class="form-group">
+        <label>Find by ID (Key):</label>
+        <input type="text" id="inputKey" placeholder="e.g., 3943506">
+    </div>
+
+    <div style="text-align: center; margin: 10px; color: #999;">— OR —</div>
+
+    <div class="form-group">
+        <label>Type:</label>
+        <select id="inputType">
+            <option value="">Any Type</option>
+            <option value="education">Education</option>
+            <option value="recreational">Recreational</option>
+            <option value="social">Social</option>
+            <option value="diy">DIY</option>
+            <option value="charity">Charity</option>
+            <option value="cooking">Cooking</option>
+            <option value="relaxation">Relaxation</option>
+            <option value="music">Music</option>
+            <option value="busywork">Busywork</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Participants:</label>
+        <input type="number" id="inputParticipants" min="1" placeholder="e.g., 1">
+    </div>
+
+    <label class="toggle-group">
+        <input type="checkbox" id="linkRequired"> 
+        Link is required (only shows activities with URLs)
+    </label>
+
+    <button onclick="searchActivities()">Search</button>
+
+    <div id="display-area">
+        <h3 id="res-title">Results...</h3>
+        <div id="res-details"></div>
+        <div id="res-link" style="margin-top: 15px;"></div>
+    </div>
+</div>
+
+<script>
+    async function searchActivities() {
+        const key = document.getElementById('inputKey').value.trim();
+        const type = document.getElementById('inputType').value;
+        const participants = document.getElementById('inputParticipants').value;
+        const linkRequired = document.getElementById('linkRequired').checked;
+
+        const title = document.getElementById('res-title');
+        const details = document.getElementById('res-details');
+        const linkBox = document.getElementById('res-link');
+
+        try {
+            // Load the JSON data
+            const response = await fetch('activities.json');
+            if (!response.ok) throw new Error("Could not find activities.json");
+            const activities = await response.json();
+            
+            let match = null;
+
+            // 1. Search by Key
+            if (key) {
+                match = activities.find(a => a.key == key);
+                // If link is required but this key has no link, nullify match
+                if (linkRequired && match && (!match.link || match.link === "")) {
+                    match = null;
+                }
+            } 
+            // 2. Filtered Search
+            else {
+                const pool = activities.filter(a => {
+                    const typeMatch = type ? a.type === type : true;
+                    const partMatch = participants ? a.participants == participants : true;
+                    // NEW: Link constraint logic
+                    const linkMatch = linkRequired ? (a.link && a.link !== "") : true;
+                    
+                    return typeMatch && partMatch && linkMatch;
+                });
+                
+                if (pool.length > 0) {
+                    match = pool[Math.floor(Math.random() * pool.length)];
+                }
+            }
+
+            if (match) {
+                title.innerText = match.activity;
+                title.classList.remove('error');
+                details.innerText = `Type: ${match.type} | People: ${match.participants}`;
+                linkBox.innerHTML = match.link ? `<a href="${match.link}" target="_blank">Visit Site &rarr;</a>` : 'No link available';
+            } else {
+                title.innerText = "No matching activities found.";
+                title.classList.add('error');
+                details.innerText = "";
+                linkBox.innerHTML = "";
+            }
+
+        } catch (err) {
+            title.innerText = "Error: " + err.message;
+            console.error(err);
+        }
+    }
+</script>
+
+</body>
+</html>
